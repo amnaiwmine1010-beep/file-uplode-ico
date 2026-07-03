@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SpeedX Admin Panel</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.3/ace.js"></script>
+    <style>
+        * { margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; box-sizing: border-box; }
+        body { background: #0b0e1a; color: #fff; padding: 15px; min-height: 100vh; }
+        .container { max-width: 1400px; margin: auto; }
+        .header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; border-bottom: 2px solid #00d4ff; padding-bottom: 15px; margin-bottom: 20px; }
+        .header h1 { color: #00d4ff; letter-spacing: 2px; font-size: 24px; }
+        .header h1 span { background: #00d4ff33; padding: 5px 15px; border-radius: 30px; font-size: 14px; margin-left: 10px; }
+        .user-info { display: flex; align-items: center; gap: 15px; flex-wrap: wrap; }
+        .user-info button { background: #333; border: none; padding: 8px 20px; border-radius: 8px; color: white; cursor: pointer; }
+        
+        .tabs { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; border-bottom: 1px solid #2a3455; padding-bottom: 10px; }
+        .tab-btn { background: #1f2740; border: none; padding: 10px 25px; border-radius: 30px; color: #aaa; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        .tab-btn.active { background: #00d4ff; color: #0b0e1a; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        .card { background: #141a2b; padding: 20px; border-radius: 16px; margin-top: 15px; border: 1px solid #2a3455; }
+        .card h3 { color: #00d4ff; margin-bottom: 15px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        input, textarea, button, select { background: #1f2740; border: none; padding: 12px 18px; border-radius: 10px; color: white; width: 100%; margin-bottom: 10px; }
+        button { background: #00d4ff; color: #0b0e1a; font-weight: bold; width: auto; cursor: pointer; transition: 0.3s; }
+        button:hover { opacity: 0.8; }
+        button.danger { background: #ff4d6d; }
+        button.green { background: #28a745; }
+        button.small { padding: 6px 15px; font-size: 12px; width: auto; }
+        .row { display: flex; gap: 15px; flex-wrap: wrap; align-items: center; }
+        .col { flex: 1; min-width: 200px; }
+        .user-item, .file-item, .popup-item { background: #1f2740; padding: 12px 15px; border-radius: 10px; margin: 5px 0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+        .badge { background: #ff4d6d; padding: 4px 12px; border-radius: 20px; font-size: 12px; }
+        .badge.green { background: #28a745; }
+        .badge.blue { background: #00d4ff; color: #000; }
+        .file-grid { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 15px; }
+        .file-card { background: #1f2740; padding: 15px; border-radius: 10px; min-width: 100px; text-align: center; cursor: pointer; border: 1px solid transparent; }
+        .file-card:hover { border-color: #00d4ff; background: #1f2740dd; }
+        .file-card .icon { font-size: 28px; }
+        .file-card .name { word-break: break-all; font-size: 12px; margin-top: 5px; }
+        .breadcrumb { padding: 10px 0; color: #aaa; }
+        .breadcrumb span { color: #00d4ff; cursor: pointer; }
+        #previewModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 999; padding: 20px; }
+        #previewModal .modal-content { background: #141a2b; max-width: 95%; max-height: 95%; margin: auto; padding: 20px; border-radius: 16px; overflow: auto; }
+        #previewModal .close { float: right; background: red; color: white; border: none; padding: 5px 15px; border-radius: 30px; cursor: pointer; }
+        
+        #editor { height: 65vh; width: 100%; border-radius: 12px; overflow: hidden; border: 1px solid #2a3455; }
+        .editor-toolbar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; align-items: center; background: #0b0e1a; padding: 10px; border-radius: 10px; }
+        .editor-toolbar .file-path { background: #1f2740; padding: 8px 15px; border-radius: 30px; font-size: 13px; color: #aaa; flex: 1; min-width: 150px; }
+        .editor-toolbar button { margin-bottom: 0; }
+        .preview-frame { width: 100%; height: 50vh; border: 1px solid #2a3455; border-radius: 12px; background: white; margin-top: 10px; }
+
+        /* ড্যাশবোর্ড কার্ড গ্রিড */
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .stat-card { background: #1f2740; padding: 15px; border-radius: 12px; text-align: center; border-left: 4px solid #00d4ff; }
+        .stat-card .number { font-size: 28px; font-weight: bold; color: #00d4ff; }
+        .stat-card .label { font-size: 14px; color: #aaa; margin-top: 5px; }
+        .activity-list { max-height: 300px; overflow-y: auto; }
+        .activity-item { padding: 8px 12px; border-bottom: 1px solid #2a3455; display: flex; justify-content: space-between; font-size: 14px; }
+
+        .footer { text-align: center; margin-top: 40px; color: #555; border-top: 1px solid #1f2740; padding-top: 20px; }
+        .footer strong { color: #00d4ff; }
+        @media (max-width: 600px) { .header h1 { font-size: 18px; } .tab-btn { padding: 8px 15px; font-size: 12px; } #editor { height: 45vh; } .stats-grid { grid-template-columns: repeat(2, 1fr); } }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>⚡ SPEED_X <span>v4.0</span></h1>
+        <div class="user-info">
+            <span id="userDisplay">Loading...</span>
+            <button onclick="logout()">Logout</button>
+        </div>
+    </div>
+
+    <!-- ট্যাব -->
+    <div class="tabs">
+        <button class="tab-btn active" onclick="showTab('dashboard-tab')">📊 Dashboard</button>
+        <button class="tab-btn" onclick="showTab('links-tab')">🔗 Links</button>
+        <button class="tab-btn" onclick="showTab('files-tab')">📁 Files</button>
+        <button class="tab-btn" onclick="showTab('editor-tab')">📝 Editor</button>
+        <button class="tab-btn" onclick="showTab('popups-tab')">📢 Popups</button>
+        <button class="tab-btn" onclick="showTab('users-tab')">👥 Users</button>
+    </div>
+
+    <!-- ========== ট্যাব ০: ড্যাশবোর্ড ========== -->
+    <div id="dashboard-tab" class="tab-content active">
+        <div class="card">
+            <h3>📊 System Dashboard</h3>
+            <div class="stats-grid" id="statsGrid">
+                <div class="stat-card"><div class="number" id="statUsers">-</div><div class="label">Users</div></div>
+                <div class="stat-card"><div class="number" id="statLinks">-</div><div class="label">Links</div></div>
+                <div class="stat-card"><div class="number" id="statPopups">-</div><div class="label">Popups</div></div>
+                <div class="stat-card"><div class="number" id="statCPU">-</div><div class="label">CPU %</div></div>
+                <div class="stat-card"><div class="number" id="statRAM">-</div><div class="label">RAM %</div></div>
+                <div class="stat-card"><div class="number" id="statStorage">-</div><div class="label">Storage %</div></div>
+            </div>
+            <h4 style="color:#aaa; margin-top:10px;">🕒 Recent Activities</h4>
+            <div class="activity-list" id="activityList">Loading...</div>
+        </div>
+    </div>
+
+    <!-- ========== ট্যাব ১: লিংক ========== -->
+    <div id="links-tab" class="tab-content">
+        <div class="card">
+            <h3>🔗 Create Custom Link</h3>
+            <div class="row">
+                <div class="col">
+                    <input type="text" id="originalUrl" placeholder="Original URL">
+                    <input type="text" id="customSlug" placeholder="Custom Slug (optional)">
+                    <button onclick="createLink()">⚡ Create Link</button>
+                </div>
+                <div class="col" id="linkList"><p>Loading...</p></div>
+            </div>
+            <div id="previewArea" style="background:#0b0e1a; padding:10px; border-radius:8px; margin-top:10px; border:1px dashed #444;">
+                🔍 Live Preview: <span id="livePreview">Nothing yet</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== ট্যাব ২: ফাইল ম্যানেজার ========== -->
+    <div id="files-tab" class="tab-content">
+        <div class="card">
+            <h3>📁 File Manager <span style="font-size:14px; color:#aaa;">(Click code file to edit)</span></h3>
+            <div class="row" style="margin-bottom:10px;">
+                <div class="col"><input type="text" id="filePathInput" value="/"></div>
+                <div class="col" style="display:flex; gap:10px;">
+                    <button onclick="loadFiles()">📂 Go</button>
+                    <button onclick="uploadFile()">⬆ Upload</button>
+                    <button onclick="createFolderPrompt()">📁 New Folder</button>
+                </div>
+            </div>
+            <div class="breadcrumb" id="breadcrumb">📂 Root</div>
+            <div id="fileList" class="file-grid">Loading...</div>
+            <input type="file" id="fileUploadInput" style="display:none;" onchange="uploadFileSubmit()">
+        </div>
+    </div>
+
+    <!-- ========== ট্যাব ৩: কোড এডিটর ========== -->
+    <div id="editor-tab" class="tab-content">
+        <div class="card">
+            <h3>📝 Source Code Editor</h3>
+            <div class="editor-toolbar">
+                <span class="file-path" id="editorFilePath">📄 No file opened</span>
+                <button onclick="saveFile()">💾 Save</button>
+                <button onclick="copyCode()" style="background:#6c757d;">📋 Copy</button>
+                <button onclick="downloadCode()" style="background:#17a2b8;">⬇ Download</button>
+                <button onclick="previewCode()" style="background:#ffc107; color:#000;">▶ Preview</button>
+            </div>
+            <div id="editor">Loading editor...</div>
+            <div id="previewContainer" style="display:none; margin-top:10px;">
+                <h4 style="color:#aaa;">📺 Live Preview</h4>
+                <iframe id="livePreviewFrame" class="preview-frame" sandbox="allow-scripts allow-modals allow-same-origin"></iframe>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== ট্যাব ৪: পপআপ ম্যানেজার ========== -->
+    <div id="popups-tab" class="tab-content">
+        <div class="card">
+            <h3>📢 Popup Manager <span style="font-size:14px; color:#aaa;">(Create & Schedule)</span></h3>
+            <div class="row">
+                <div class="col">
+                    <input type="text" id="popupTitle" placeholder="Popup Title *">
+                    <textarea id="popupDesc" placeholder="Description (optional)" rows="2"></textarea>
+                    <input type="text" id="popupBtnText" placeholder="Button Text (e.g. Learn More)" value="Learn More">
+                    <input type="text" id="popupBtnLink" placeholder="Button Link (e.g. https://...)" value="#">
+                    <input type="datetime-local" id="popupSchedule">
+                    <div style="display:flex; gap:10px; align-items:center;">
+                        <label><input type="checkbox" id="popupActive" checked> Active</label>
+                        <button onclick="createPopup()" style="flex:1;">➕ Create Popup</button>
+                    </div>
+                </div>
+                <div class="col" id="popupList"><p>Loading popups...</p></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== ট্যাব ৫: ইউজার ========== -->
+    <div id="users-tab" class="tab-content">
+        <div class="card">
+            <h3>🛡️ User Management (Ban/Unban)</h3>
+            <div id="userList">Loading...</div>
+        </div>
+    </div>
+
+    <!-- মডাল -->
+    <div id="previewModal">
+        <div class="modal-content">
+            <button class="close" onclick="closePreview()">✕ Close</button>
+            <div id="previewBody" style="margin-top:15px;">Loading...</div>
+        </div>
+    </div>
+
+    <div class="footer">© 2026 <strong>SPEED_X</strong>. All rights reserved. | Powered by SpeedX</div>
+</div>
+
+<script>
+    let token = localStorage.getItem('token');
+    let editor = null;
+    let currentEditPath = null;
+
+    // ======================= অথেন্টিকেশন =======================
+    if (!token) {
+        const user = prompt('Username (admin)') || 'admin';
+        const pass = prompt('Password (admin123)') || 'admin123';
+        fetch('/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: user, password: pass })
+        }).then(res => res.json()).then(data => {
+            if (data.token) {
+                localStorage.setItem('token', data.token);
+                localStorage.setItem('role', data.role);
+                location.reload();
+            } else { alert('Login failed! Try admin/admin123'); localStorage.clear(); }
+        });
+    } else {
+        document.getElementById('userDisplay').innerText = '👤 SpeedX Admin';
+        initEditor();
+        loadDashboard();
+        loadLinks();
+        loadFiles();
+        loadPopups();
+        loadUsers();
+    }
+
+    // ======================= ট্যাব সুইচ =======================
+    function showTab(id) {
+        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        document.querySelector(`.tab-btn[onclick="showTab('${id}')"]`).classList.add('active');
+        if (id === 'dashboard-tab') loadDashboard();
+        if (id === 'files-tab') loadFiles();
+        if (id === 'users-tab') loadUsers();
+        if (id === 'links-tab') loadLinks();
+        if (id === 'popups-tab') loadPopups();
+        if (id === 'editor-tab' && editor) editor.resize();
+    }
+
+    // ======================= API কল =======================
+    async function fetchAPI(url, options = {}) {
+        options.headers = options.headers || {};
+        options.headers['x-auth-token'] = localStorage.getItem('token');
+        options.headers['Content-Type'] = 'application/json';
+        const res = await fetch(url, options);
+        const data = await res.json();
+        if (res.status === 401) { alert('Session expired.'); logout(); }
+        return data;
+    }
+
+    // ======================= ড্যাশবোর্ড =======================
+    async function loadDashboard() {
+        const data = await fetchAPI('/api/dashboard/stats');
+        if (data.cpu !== undefined) {
+            document.getElementById('statUsers').innerText = data.total_users;
+            document.getElementById('statLinks').innerText = data.total_links;
+            document.getElementById('statPopups').innerText = data.total_popups;
+            document.getElementById('statCPU').innerText = data.cpu + '%';
+            document.getElementById('statRAM').innerText = data.ram_percent + '%';
+            document.getElementById('statStorage').innerText = data.storage_percent + '%';
+            
+            let html = '';
+            if (data.recent_activities && data.recent_activities.length) {
+                data.recent_activities.forEach(a => {
+                    html += `<div class="activity-item"><span>👤 ${a.username}</span><span>${a.action}</span><span style="color:#888;">${a.time}</span></div>`;
+                });
+            } else { html = '<div style="padding:10px; color:#aaa;">No recent activities</div>'; }
+            document.getElementById('activityList').innerHTML = html;
+        } else {
+            document.getElementById('statsGrid').innerHTML = `<p>Error loading stats: ${data.msg}</p>`;
+        }
+    }
+
+    // ======================= লিংক =======================
+    async function createLink() {
+        const url = document.getElementById('originalUrl').value;
+        const slug = document.getElementById('customSlug').value;
+        if (!url) return alert('Enter URL');
+        const data = await fetchAPI('/api/links', { method: 'POST', body: JSON.stringify({ originalUrl: url, customSlug: slug }) });
+        if (data.shortUrl) document.getElementById('livePreview').innerHTML = `<a href="${data.shortUrl}" target="_blank">${data.shortUrl}</a>`;
+        alert(data.msg);
+        loadLinks();
+    }
+    async function loadLinks() {
+        const data = await fetchAPI('/api/links');
+        let html = '<ul style="list-style:none;">';
+        if (!data.length) html += '<li>No links.</li>';
+        data.forEach(l => {
+            html += `<li style="background:#1f2740; padding:10px; margin:5px 0; border-radius:8px; display:flex; justify-content:space-between; flex-wrap:wrap;">
+                <span>🔗 <strong>${l.customSlug}</strong> → ${l.originalUrl}</span>
+                <span><button class="small" onclick="editLink(${l.id})">✏️</button><button class="small danger" onclick="deleteLink(${l.id})">🗑️</button></span>
+            </li>`;
+        });
+        document.getElementById('linkList').innerHTML = html;
+    }
+    async function deleteLink(id) { if(!confirm('Delete?')) return; await fetchAPI(`/api/links/${id}`, {method:'DELETE'}); loadLinks(); }
+    function editLink(id) { const u=prompt('New URL:'); if(u) fetchAPI(`/api/links/${id}`, {method:'PUT', body:JSON.stringify({originalUrl:u})}).then(()=>loadLinks()); }
+
+    // ======================= ফাইল ম্যানেজার =======================
+    function getPathFromInput() {
+        let p = document.getElementById('filePathInput').value.trim();
+        if (!p.startsWith('/')) p = '/' + p;
+        if (p.length > 1 && p.endsWith('/')) p = p.slice(0, -1);
+        return p;
+    }
+    async function loadFiles() {
+        const path = getPathFromInput();
+        const data = await fetchAPI(`/api/files/list?path=${encodeURIComponent(path)}`);
+        if (data.items) { renderFiles(data.items, path); updateBreadcrumb(path); }
+        else document.getElementById('fileList').innerHTML = `<p>⚠️ ${data.msg}</p>`;
+    }
+    function renderFiles(items, path) {
+        const container = document.getElementById('fileList');
+        if (!items.length) { container.innerHTML = '<p style="color:#aaa;">📭 Empty folder</p>'; return; }
+        let html = '';
+        items.forEach(item => {
+            const icon = item.type === 'folder' ? '📁' : '📄';
+            const size = item.type === 'file' ? (item.size / 1024).toFixed(1) + ' KB' : '';
+            html += `<div class="file-card" onclick="handleFileClick('${item.name}', '${item.type}', '${path}')">
+                <div class="icon">${icon}</div>
+                <div class="name">${item.name}</div>
+                <div style="font-size:10px; color:#888;">${size}</div>
+            </div>`;
+        });
+        container.innerHTML = html;
+    }
+    function updateBreadcrumb(path) {
+        const parts = path.split('/').filter(p => p);
+        let html = '📂 <span onclick="navigateTo(\'\')">Root</span>';
+        let cum = '';
+        parts.forEach((p,i) => { cum += '/'+p; html += ` / <span onclick="navigateTo('${cum}')">${p}</span>`; });
+        document.getElementById('breadcrumb').innerHTML = html;
+        document.getElementById('filePathInput').value = path;
+    }
+    function navigateTo(path) { document.getElementById('filePathInput').value = path || '/'; loadFiles(); }
+
+    function handleFileClick(name, type, path) {
+        const fullPath = path === '/' ? '/' + name : path + '/' + name;
+        if (type === 'folder') { document.getElementById('filePathInput').value = fullPath; loadFiles(); }
+        else {
+            const codeExts = ['.html','.css','.js','.py','.txt','.json','.xml','.md','.csv'];
+            const isCode = codeExts.some(ext => name.toLowerCase().endsWith(ext));
+            if (isCode) { openInEditor(fullPath); showTab('editor-tab'); }
+            else { previewFile(fullPath); }
+        }
+    }
+
+    function uploadFile() { document.getElementById('fileUploadInput').click(); }
+    async function uploadFileSubmit() {
+        const input = document.getElementById('fileUploadInput');
+        const file = input.files[0];
+        if (!file) return;
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('path', getPathFromInput());
+        const res = await fetch('/api/files/upload', {
+            method: 'POST',
+            headers: { 'x-auth-token': localStorage.getItem('token') },
+            body: formData
+        });
+        const data = await res.json();
+        alert(data.msg);
+        loadFiles();
+        input.value = '';
+    }
+    function createFolderPrompt() {
+        const name = prompt('New folder name:');
+        if(name) fetchAPI('/api/files/folder', {method:'POST', body:JSON.stringify({path:getPathFromInput(), folderName:name})}).then(d=>{alert(d.msg); loadFiles();});
+    }
+
+    async function previewFile(path) {
+        const modal = document.getElementById('previewModal');
+        const body = document.getElementById('previewBody');
+        modal.style.display = 'flex';
+        body.innerHTML = 'Loading...';
+        try {
+            const res = await fetch(`/api/files/preview/${encodeURIComponent(path)}`, { headers: { 'x-auth-token': localStorage.getItem('token') } });
+            const ct = res.headers.get('content-type');
+            if (ct && ct.includes('application/json')) {
+                const data = await res.json();
+                if(data.type === 'text') body.innerHTML = `<pre style="white-space:pre-wrap; background:#0b0e1a; padding:15px; border-radius:8px; max-height:500px; overflow:auto;">${data.content}</pre>`;
+                else body.innerHTML = `<p>Error: ${data.msg}</p>`;
+            } else {
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                if (ct.includes('image')) body.innerHTML = `<img src="${url}" style="max-width:100%; max-height:80vh;">`;
+                else if (ct.includes('video')) body.innerHTML = `<video controls src="${url}" style="max-width:100%; max-height:80vh;"></video>`;
+                else if (ct.includes('audio')) body.innerHTML = `<audio controls src="${url}" style="width:100%;"></audio>`;
+                else if (ct.includes('pdf')) body.innerHTML = `<embed src="${url}" type="application/pdf" style="width:100%; height:80vh;">`;
+                else body.innerHTML = `<p>File: ${path} <br><a href="${url}" download>⬇ Download</a></p>`;
+            }
+        } catch(e) { body.innerHTML = `<p style="color:red;">Error: ${e.message}</p>`; }
+    }
+    function closePreview() { document.getElementById('previewModal').style.display = 'none'; }
+    document.addEventListener('keydown', (e) => { if(e.key === 'Escape') closePreview(); });
+
+    window.addEventListener('contextmenu', function(e) {
+        const card = e.target.closest('.file-card');
+        if (card) {
+            e.preventDefault();
+            const name = card.querySelector('.name').innerText;
+            const path = getPathFromInput();
+            const fullPath = path === '/' ? '/' + name : path + '/' + name;
+            if (confirm(`Delete "${name}"?`)) {
+                fetchAPI('/api/files/delete', { method: 'DELETE', body: JSON.stringify({ path: fullPath }) })
+                    .then(d => { alert(d.msg); loadFiles(); });
+            }
+        }
+    });
+
+    // ======================= কোড এডিটর =======================
+    function initEditor() {
+        if (document.getElementById('editor')) {
+            editor = ace.edit("editor");
+            editor.setTheme("ace/theme/monokai");
+            editor.session.setMode("ace/mode/html");
+            editor.setOptions({ fontSize: "14px", enableBasicAutocompletion: true, enableLiveAutocompletion: true, showPrintMargin: false });
+            editor.setValue("// Welcome to SpeedX Editor!\n// Open a file from File Manager.");
+            editor.clearSelection();
+        }
+    }
+    async function openInEditor(path) {
+        const data = await fetchAPI(`/api/files/content?path=${encodeURIComponent(path)}`);
+        if (data.content !== undefined) {
+            currentEditPath = path;
+            document.getElementById('editorFilePath').innerHTML = `📄 ${path}`;
+            editor.setValue(data.content);
+            editor.clearSelection();
+            let mode = "ace/mode/text";
+            if (path.endsWith('.html')) mode = "ace/mode/html";
+            else if (path.endsWith('.css')) mode = "ace/mode/css";
+            else if (path.endsWith('.js')) mode = "ace/mode/javascript";
+            else if (path.endsWith('.py')) mode = "ace/mode/python";
+            else if (path.endsWith('.json')) mode = "ace/mode/json";
+            editor.session.setMode(mode);
+            document.getElementById('previewContainer').style.display = 'none';
+        } else { alert(data.msg || 'Could not open'); }
+    }
+    async function saveFile() {
+        if (!currentEditPath) return alert('No file opened!');
+        const content = editor.getValue();
+        const data = await fetchAPI('/api/files/save', { method: 'POST', body: JSON.stringify({ path: currentEditPath, content: content }) });
+        alert(data.msg);
+    }
+    function copyCode() { const content = editor.getValue(); navigator.clipboard.writeText(content).then(() => alert('Copied!')).catch(() => alert('Copy failed')); }
+    function downloadCode() {
+        if (!currentEditPath) return alert('No file!');
+        const content = editor.getValue();
+        const blob = new Blob([content], {type: 'text/plain'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = currentEditPath.split('/').pop(); a.click(); URL.revokeObjectURL(url);
+    }
+    function previewCode() {
+        if (!currentEditPath) return alert('No file!');
+        const content = editor.getValue();
+        if (currentEditPath.endsWith('.html')) {
+            document.getElementById('previewContainer').style.display = 'block';
+            const iframe = document.getElementById('livePreviewFrame');
+            const blob = new Blob([content], {type: 'text/html'});
+            const url = URL.createObjectURL(blob);
+            iframe.src = url;
+            setTimeout(() => URL.revokeObjectURL(url), 10000);
+        } else { alert('Preview only for HTML'); }
+    }
+
+    // ======================= পপআপ ম্যানেজার =======================
+    async function createPopup() {
+        const title = document.getElementById('popupTitle').value;
+        if (!title) return alert('Title is required!');
+        const data = {
+            title: title,
+            description: document.getElementById('popupDesc').value,
+            button_text: document.getElementById('popupBtnText').value,
+            button_link: document.getElementById('popupBtnLink').value,
+            scheduled_at: document.getElementById('popupSchedule').value,
+            is_active: document.getElementById('popupActive').checked
+        };
+        const res = await fetchAPI('/api/popups', { method: 'POST', body: JSON.stringify(data) });
+        alert(res.msg);
+        if (res.id) {
+            document.getElementById('popupTitle').value = '';
+            document.getElementById('popupDesc').value = '';
+            loadPopups();
+        }
+    }
+
+    async function loadPopups() {
+        const data = await fetchAPI('/api/popups');
+        let html = '<ul style="list-style:none;">';
+        if (!data.length) html += '<li>No popups created yet.</li>';
+        data.forEach(p => {
+            const status = p.is_active ? '<span class="badge green">Active</span>' : '<span class="badge">Inactive</span>';
+            html += `<li class="popup-item" style="flex-direction:column; align-items:stretch; gap:5px;">
+                <div style="display:flex; justify-content:space-between; flex-wrap:wrap;">
+                    <span><strong>${p.title}</strong> ${status}</span>
+                    <span>
+                        <button class="small" onclick="togglePopup(${p.id}, ${!p.is_active})">${p.is_active ? '🔇 Deactivate' : '📢 Activate'}</button>
+                        <button class="small danger" onclick="deletePopup(${p.id})">🗑️</button>
+                    </span>
+                </div>
+                <div style="font-size:13px; color:#aaa;">${p.description || ''} | 🔗 ${p.button_text} → ${p.button_link} | ⏰ ${p.scheduled_at ? p.scheduled_at : 'No schedule'}</div>
+            </li>`;
+        });
+        document.getElementById('popupList').innerHTML = html;
+    }
+
+    async function togglePopup(id, newState) {
+        await fetchAPI(`/api/popups/${id}`, { method: 'PUT', body: JSON.stringify({ is_active: newState }) });
+        loadPopups();
+    }
+
+    async function deletePopup(id) {
+        if (!confirm('Delete this popup?')) return;
+        await fetchAPI(`/api/popups/${id}`, { method: 'DELETE' });
+        loadPopups();
+    }
+
+    // ======================= ইউজার ম্যানেজমেন্ট =======================
+    async function loadUsers() {
+        const data = await fetchAPI('/api/admin/users');
+        if (!Array.isArray(data)) { document.getElementById('userList').innerHTML = '<p>Error</p>'; return; }
+        let html = '';
+        data.forEach(u => {
+            html += `<div class="user-item">
+                <span>👤 ${u.username} ${u.role === 'admin' ? '⭐' : ''} 
+                    ${u.isBanned ? '<span class="badge">BANNED</span>' : '<span class="badge green">Active</span>'}
+                </span>
+                <div><button onclick="toggleBan('${u.id}', ${!u.isBanned})" class="${u.isBanned ? 'green' : 'danger'} small" style="width:auto;">
+                    ${u.isBanned ? 'Unban' : 'Ban'}
+                </button></div>
+            </div>`;
+        });
+        document.getElementById('userList').innerHTML = html;
+    }
+    async function toggleBan(userId, isBanned) {
+        if (!confirm(`${isBanned ? 'Ban' : 'Unban'}?`)) return;
+        await fetchAPI(`/api/admin/ban/${userId}`, { method: 'PUT', body: JSON.stringify({ isBanned }) });
+        loadUsers();
+    }
+
+    // ======================= লগআউট =======================
+    function logout() { localStorage.clear(); location.reload(); }
+</script>
+</body>
+</html>

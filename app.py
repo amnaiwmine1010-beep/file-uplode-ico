@@ -590,8 +590,7 @@ def delete_popup(current_user, popup_id):
 # ========== ফ্রন্টেন্ড সার্ভ ==========
 @app.route('/admin')
 def serve_admin():
-    return send_from_directory('static', 'admin.html')
-
+    return send_file('admin.html')
 # ========== সার্ভার চালু ==========
 if __name__ == '__main__':
     with app.app_context():
